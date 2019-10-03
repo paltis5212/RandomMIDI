@@ -100,13 +100,14 @@ class SentenceObject():
 
     def _createNote(self, noteIndex: int, tempoWeight: WeightsObject):
         """ 製造一個新 note，音階、節奏、輕重一應俱全
-        :param noteIndex: 本句第幾顆 note
+        :param noteIndex: 本句第幾顆 note，-1 的話，直接生成新音符
         :param tempoWeight: 使用的節奏權重
         """
         newNote = NoteObject()
-        passNote = self._getPassNote(noteIndex)
         scaleResult: dict
-        if passNote is not None:
+        passNote = self._getPassNote(noteIndex)
+        # 有過去音符，且外層不指定新生
+        if passNote is not None and noteIndex != -1:
             scaleResult = self._twoWeightsToScale(passNote)
         else:
             scaleResult = self._getNewScale()
@@ -154,8 +155,8 @@ class SentenceObject():
 
         # 階段二: 在多個權重一、二結果中，同樣為第一名出現次數的；否則，權重一出現最多次的
         # 出現最多次的 key
-        fluctuationMax = max(list(fluctuationKeyDict.values()))
-        scaleMax = max(list(scaleKeyDict.values()))
+        fluctuationMax: int = max(list(fluctuationKeyDict.values()))
+        scaleMax: int = max(list(scaleKeyDict.values()))
         # 同樣出現最多次的 key
         fluctuationMaxList = []
         # 目標音階
@@ -232,6 +233,6 @@ class SentenceObject():
                 else:
                     tempoWeight = InfoMgr.weights[WeightsData.endTempo.value]
                 # 生成新音符取代
-                self.notes[rand] = self._createNote(rand, tempoWeight)
+                self.notes[rand] = self._createNote(-1, tempoWeight)
                 changeIndexList.append(rand)
                 index += 1

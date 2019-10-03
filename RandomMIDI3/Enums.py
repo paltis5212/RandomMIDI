@@ -2,13 +2,13 @@ from enum import Enum
 
 
 class ScalePitch(Enum):
-    C = 72
-    D = 74
-    E = 76
-    F = 79
-    G = 81
-    A = 84
-    B = 86
+    C = 60
+    D = 62
+    E = 64
+    F = 65
+    G = 67
+    A = 69
+    B = 71
     step = 12
     scaleName = ["C", "D", "E", "F", "G", "A", "B"]
 

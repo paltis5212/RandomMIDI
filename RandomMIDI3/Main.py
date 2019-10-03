@@ -3,6 +3,8 @@ from Enums import ScalePitch, LimitData, WeightsData
 from InfoMgr import InfoMgr
 from ObjectModel import WeightsObject, SentenceObject
 from enum import Enum
+from midiutil import MIDIFile
+from datetime import datetime
 
 
 class Main():
@@ -12,14 +14,19 @@ class Main():
         self._setMinAndMax()
         self.repeatNum = 0
         for sentenceIndex in range(int(InfoMgr.limit[LimitData.sentenceCount.value]["value"])):
-            # 重複
-            if self._repeatSentence(sentenceIndex) or self.repeatNum in InfoMgr.music:
+            # 已經有句子了
+            if sentenceIndex in InfoMgr.music:
+                continue
+            repeatResult = self._repeatSentence(sentenceIndex)
+            # 本次已複製句子
+            if repeatResult:
                 continue
             # 新句子
             sentenceObject = SentenceObject(pos=sentenceIndex)
             sentenceObject.setNew()
             InfoMgr.music[sentenceIndex] = sentenceObject
             self.repeatNum += 1
+        self._createMIDI()
 
     def _setTableData(self, path: str):
         """ 設定精美設計後的表單內容到 limit 和 weights 
@@ -78,13 +85,11 @@ class Main():
         return ScalePitch[ScalePitch.scaleName.value[int(note) - 1]].value + (up - down) * ScalePitch.step.value
 
     def _repeatSentence(self, sentenceIndex: int):
+        """ 重複句子 -> bool (True 有重複，False 沒有重複需要生成新句子) """
         repeatCount = int(
             InfoMgr.weights[WeightsData.repeatCount.value].getRandKey())
-        # 沒有那麼多句子可以重複，不給過
-        if repeatCount > self.repeatNum:
-            return False
         # 重複很多句子
-        else:
+        if repeatCount <= self.repeatNum and repeatCount > 0:
             for index in range(repeatCount):
                 nowIndex = sentenceIndex + index
                 sentenceObject = SentenceObject(pos=nowIndex)
@@ -93,6 +98,27 @@ class Main():
                 InfoMgr.music[nowIndex] = sentenceObject
             self.repeatNum = 0
             return True
+        else:
+            return False
+
+    def _createMIDI(self):
+        MyMIDI = MIDIFile(1)
+        track = 0   # the only track
+        channel = 0
+        time = 0    # start at the beginning
+        MyMIDI.addTrackName(track, time, "track" + str(track))
+        MyMIDI.addTempo(track, time, int(
+            InfoMgr.limit[LimitData.speed.value]["bpm"]))
+        MyMIDI.addProgramChange(0, 0, 0, int(
+            InfoMgr.limit[LimitData.program.value]["value"]))
+        for sentenceIndex in InfoMgr.music:
+            for note in InfoMgr.music[sentenceIndex].notes:
+                MyMIDI.addNote(track=track, channel=channel, pitch=note.pitch,
+                               time=time, duration=note.duration, volume=note.volume)
+                time += note.duration
+            time += 1
+        with open(datetime.now().strftime('%Y%m%d-%H%M%S') + ".mid", "wb") as midi_file:
+            MyMIDI.writeFile(midi_file)
 
 
 a = Main()
