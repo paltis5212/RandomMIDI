@@ -1,3 +1,6 @@
+#! -*- coding:utf-8 -*-
+import sys
+sys.path.insert(0, "/Users/user/.pyenv/versions/3.6.8/lib/python3.6/site-packages")
 from openpyxl import load_workbook
 from Enums import ScalePitch, LimitData, WeightsData
 from InfoMgr import InfoMgr
@@ -10,7 +13,7 @@ from datetime import datetime
 class Main():
     def __init__(self):
         # 要先做，取得表單內容後比較好做
-        self._setTableData("rules.xlsx")
+        self._setTableData("RandomMIDI3/rules.xlsx")
         self._setMinAndMax()
         self.repeatNum = 0
         for sentenceIndex in range(int(InfoMgr.limit[LimitData.sentenceCount.value]["value"])):
