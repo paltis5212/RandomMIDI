@@ -1,127 +1,66 @@
-#! -*- coding:utf-8 -*-
-import sys
-sys.path.insert(0, "/Users/user/.pyenv/versions/3.6.8/lib/python3.6/site-packages")
-from openpyxl import load_workbook
-from Enums import ScalePitch, LimitData, WeightsData
-from InfoMgr import InfoMgr
-from ObjectModel import WeightsObject, SentenceObject
-from enum import Enum
-from midiutil import MIDIFile
-from datetime import datetime
+import random
+from webbrowser import get
+from Model import *
 
 
-class Main():
-    def __init__(self):
-        # 要先做，取得表單內容後比較好做
-        self._setTableData("RandomMIDI3/rules.xlsx")
-        self._setMinAndMax()
-        self.repeatNum = 0
-        for sentenceIndex in range(int(InfoMgr.limit[LimitData.sentenceCount.value]["value"])):
-            # 已經有句子了
-            if sentenceIndex in InfoMgr.music:
-                continue
-            repeatResult = self._repeatSentence(sentenceIndex)
-            # 本次已複製句子
-            if repeatResult:
-                continue
-            # 新句子
-            sentenceObject = SentenceObject(pos=sentenceIndex)
-            sentenceObject.setNew()
-            InfoMgr.music[sentenceIndex] = sentenceObject
-            self.repeatNum += 1
-        self._createMIDI()
-
-    def _setTableData(self, path: str):
-        """ 設定精美設計後的表單內容到 limit 和 weights 
-        :param path: excel 檔路徑
-        """
-        wb = load_workbook(path)
-        ws = wb.active
-        titleRow = {}
-        nowTable = LimitData.limit.value
-        try:
-            # 獲得標題 row
-            for cell in ws["A"]:
-                if cell.value == LimitData.limit.value or cell.value == WeightsData.weights.value:
-                    nowTable = cell.value
-                    titleRow[nowTable] = {}
-                elif cell.value != None:
-                    titleRow[nowTable][cell.value] = cell.row
-            allTable = {}
-            # 讀取 row 資料
-            for table in titleRow:
-                allTable[table] = {}
-                for title in titleRow[table]:
-                    # 讀取 row 在 sheet 資料，給 key
-                    allTable[table][title] = {}
-                    for x in ws[titleRow[table][title]]:
-                        key = ws.cell(row=x.row - 1, column=x.column).value
-                        if x.value != None and key != None:
-                            allTable[table][title][key] = x.value
-            # 設定到 InfoMgr
-            InfoMgr.limit = allTable[LimitData.limit.value]
-            InfoMgr.weights = allTable[WeightsData.weights.value]
-            self._setWeightsObject()
-        except:
-            print("ERROR ", self._setTableData.__name__)
-
-    def _setWeightsObject(self):
-        """ 把單純的字典轉成 WeightsObject """
-        for key in InfoMgr.weights:
-            weightsObject = WeightsObject(InfoMgr.weights[key])
-            InfoMgr.weights[key] = weightsObject
-
-    def _setMinAndMax(self):
-        """ 設定最大最小的 pitch 範圍 """
-        InfoMgr.minPitch = self._noteStrToPitch(
-            InfoMgr.limit[LimitData.scale.value]["min"])
-        InfoMgr.maxPitch = self._noteStrToPitch(
-            InfoMgr.limit[LimitData.scale.value]["max"])
-
-    def _noteStrToPitch(self, noteStr: str):
-        """ 純文字音符變成 pitch
-        :param noteStr: 純文字音符，例如 7'
-        """
-        up: int = noteStr.count("'")
-        down: int = noteStr.count(",")
-        note: int = noteStr[: 1]
-        return ScalePitch[ScalePitch.scaleName.value[int(note) - 1]].value + (up - down) * ScalePitch.step.value
-
-    def _repeatSentence(self, sentenceIndex: int):
-        """ 重複句子 -> bool (True 有重複，False 沒有重複需要生成新句子) """
-        repeatCount = int(
-            InfoMgr.weights[WeightsData.repeatCount.value].getRandKey())
-        # 重複很多句子
-        if repeatCount <= self.repeatNum and repeatCount > 0:
-            for index in range(repeatCount):
-                nowIndex = sentenceIndex + index
-                sentenceObject = SentenceObject(pos=nowIndex)
-                sentenceObject.repeatFrom(
-                    InfoMgr.music[nowIndex - repeatCount])
-                InfoMgr.music[nowIndex] = sentenceObject
-            self.repeatNum = 0
-            return True
-        else:
-            return False
-
-    def _createMIDI(self):
-        MyMIDI = MIDIFile(1)
-        track = 0   # the only track
-        channel = 0
-        time = 0    # start at the beginning
-        MyMIDI.addTrackName(track, time, "track" + str(track))
-        MyMIDI.addTempo(track, time, int(
-            InfoMgr.limit[LimitData.speed.value]["bpm"]))
-        MyMIDI.addProgramChange(0, 0, 0, int(
-            InfoMgr.limit[LimitData.program.value]["value"]))
-        for sentenceIndex in InfoMgr.music:
-            for note in InfoMgr.music[sentenceIndex].notes:
-                MyMIDI.addNote(track=track, channel=channel, pitch=note.pitch,
-                               time=time, duration=note.duration, volume=note.volume)
-                time += note.duration
-            time += 1
-        with open(datetime.now().strftime('%Y%m%d-%H%M%S') + ".mid", "wb") as midi_file:
-            MyMIDI.writeFile(midi_file)
+do_count = 50
 
 
-a = Main()
+def get_target(w: Dict[any, int]):
+    total = sum(list(w.values()))
+    rand = random.randint(1, total)
+    s = 0
+    for k in w:
+        s += w[k]
+        if s >= rand:
+            return k
+
+
+def get_first_sentence(w: SentenceWeight):
+    chordInterval = get_target(w.chordWeight.interval)
+    noteCount = get_target(w.noteCount)
+    for i in range(noteCount):
+        pass
+
+
+def get_note(w: SentenceWeight, is_chord: bool):
+    note = Note(
+        pitch=get_target(w.noteWeight.pitch).value + Pitch.Base.value,
+        value=get_target(w.noteWeight.value)
+    )
+    if is_chord:
+        note.chord = get_chord(w.chordWeight, note.pitch)
+
+
+def get_chord(w: ChordWeight, pitch: int):
+    main_swing = get_target(w.mainSwing)
+    main_pitch = pitch - main_swing
+    count = get_target(w.count)
+    do_index = 0
+    chord = ChordNote()
+    chord.notes_pitch = []
+    while not swing or swing <= main_swing:
+        do_index += 1
+        assert do_index <= do_count, "無法計算，ChordWeight 的 count 和 swing 權重可能有衝突！"
+        swing = get_target(w.swing)
+        note_pitch = swing * get_sign() + main_pitch
+        if note_pitch not in chord.notes_pitch:
+            count -= 1
+            chord.notes_pitch.append(note_pitch)
+        if count == 0:
+            break
+
+    get_target(w.swing) <= count
+    chord = ChordNote()
+
+
+def get_sign():
+    return random.choice([1, -1])
+
+
+refer_paragraph = {}
+
+for name, w in refer_paragraph_weight.items():
+    paragraph = Paragraph()
+    sentences = []
+    # for i in range(get_target(w.sentenceCount)):
