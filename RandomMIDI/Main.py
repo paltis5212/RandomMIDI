@@ -1,3 +1,4 @@
+#! -*- coding:utf-8 -*-
 from DetailProcess import WeightsObject, ComputeUtils, ExcelMgr, MidiMgr
 import random
 
